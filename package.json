@@ -4,11 +4,10 @@
   "description": "Backend for mini-site platform",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "build": "vaša-build-komanda",
-    "start": "vaša-start-komanda"
+    "build": "npm install",
+    "start": "node src/server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

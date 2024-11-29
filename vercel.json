@@ -1,22 +1,22 @@
 {
   "version": 2,
+
   "builds": [{ "src": "src/server.js", "use": "@vercel/node" }],
+
   "routes": [
     { "handle": "filesystem" },
+
     { "src": "/(.*)", "dest": "src/server.js" }
   ],
+
   "alias": [
     "tamilfreelancer.rest",
+
     "www.tamilfreelancer.rest",
+
     "*.tamilfreelancer.rest"
   ],
-  "regions": ["all"],
+
   "cleanUrls": true
 }
-
-
-
-
-
-
 

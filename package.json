@@ -1,7 +1,7 @@
 {
   "name": "mini-site-backend",
   "version": "1.0.0",
-  "description": "Backend for mini-site platform",
+  "description": "Backend for tamilfreelancer.rest platform",
   "main": "src/app.js",
   "scripts": {
     "dev": "nodemon src/server.js",

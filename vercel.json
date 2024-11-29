@@ -1,11 +1,16 @@
-{
-  "version": 2,
-  "builds": [{ "src": "src/server.js", "use": "@vercel/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "src/server.js" }],
-  "wildcard": true,
-  "alias": [
-    "tamilfreelancer.rest",
-    "www.tamilfreelancer.rest",
-    "*.tamilfreelancer.rest"
-  ]
-}
+{
+  "version": 2,
+  "builds": [{ "src": "src/server.js", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "src/server.js" }],
+  "alias": [
+    "tamilfreelancer.rest",
+    "www.tamilfreelancer.rest"
+  ],
+  "wildcards": [
+    {
+      "domain": "tamilfreelancer.rest",
+      "value": "*"
+    }
+  ]
+}
+

@@ -6,6 +6,7 @@ module.exports = (req, res, next) => {
 
   if (host.includes("tamilfreelancer.rest")) {
     const subdomain = host.split(".")[0];
+    console.log("Checking subdomain:", subdomain); // Debug log
 
     // Don't treat www or main domain as a subdomain
     if (subdomain === "www" || subdomain === "tamilfreelancer") {
@@ -13,12 +14,16 @@ module.exports = (req, res, next) => {
       return next();
     }
 
-    // Find user by subdomain
+    // Find user by exact subdomain match
     const user = Object.values(userRegistry).find(
       userData => userData.subdomain === subdomain
     );
+    
+    console.log("Found user:", user); // Debug log
+    console.log("Current registry:", userRegistry); // Debug log
 
     if (!user) {
+      console.log("No user found for subdomain:", subdomain); // Debug log
       return res.redirect("https://tamilfreelancer.rest");
     }
 
@@ -32,7 +37,7 @@ module.exports = (req, res, next) => {
       const subdomain = req.path.split("/")[1];
       if (subdomain) {
         const user = Object.values(userRegistry).find(
-          userData => userData.subdomain.split('-')[0] === subdomain
+          userData => userData.subdomain === subdomain
         );
         req.username = user ? user.name : null;
       }
@@ -42,6 +47,10 @@ module.exports = (req, res, next) => {
 
   next();
 };
+
+
+
+
 
 
 

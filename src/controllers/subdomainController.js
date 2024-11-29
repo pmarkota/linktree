@@ -1,6 +1,9 @@
 const userRegistry = require("../data/userRegistry");
 
 exports.handleSubdomain = (req, res) => {
+  console.log("handleSubdomain called with username:", req.username);
+  console.log("Current registry:", JSON.stringify(userRegistry, null, 2));
+  
   if (req.username) {
     res.send(`Welcome to the site for user: ${req.username}`);
   } else {
@@ -9,6 +12,7 @@ exports.handleSubdomain = (req, res) => {
 };
 
 exports.registerUser = (req, res) => {
+  console.log("Registration request body:", req.body);
   const { username, name } = req.body;
 
   if (!username || !name) {
@@ -19,6 +23,7 @@ exports.registerUser = (req, res) => {
 
   // Check if username already exists
   if (userRegistry[username]) {
+    console.log("Username already exists:", username);
     return res.status(409).json({
       error: "Username already taken",
       existingSubdomain: `https://${userRegistry[username].subdomain}.tamilfreelancer.rest`,
@@ -34,13 +39,13 @@ exports.registerUser = (req, res) => {
 
   const subdomain = `${username}-${randomSuffix}`;
 
-  // Add to registry with new structure
+  // Add to registry
   userRegistry[username] = {
     name: name,
     subdomain: subdomain,
   };
 
-  console.log('Current registry:', userRegistry); // Debug log
+  console.log("Updated registry after registration:", JSON.stringify(userRegistry, null, 2));
 
   const isProduction = process.env.NODE_ENV === "production";
   const domain = isProduction ? "tamilfreelancer.rest" : "mini.local:3000";
@@ -56,33 +61,65 @@ exports.registerUser = (req, res) => {
   });
 };
 
+
+
 // New endpoint to get user's subdomain
 
+
+
 exports.getUserSubdomain = (req, res) => {
+
   const { username } = req.params;
 
+
+
   if (!userRegistry[username]) {
+
     return res.status(404).json({
+
       error: "User not found",
+
     });
+
   }
+
+
 
   const isProduction = process.env.NODE_ENV === "production";
 
+
+
   const domain = isProduction ? "tamilfreelancer.rest" : "mini.local:3000";
+
+
 
   const protocol = isProduction ? "https" : "http";
 
+
+
   const subdomainUrl = `${protocol}://${userRegistry[username].subdomain}.${domain}`;
 
+
+
   res.json({
+
     username,
+
+
 
     name: userRegistry[username].name,
 
+
+
     subdomain: subdomainUrl,
 
+
+
     subdomainId: userRegistry[username].subdomain,
+
   });
+
 };
+
+
 

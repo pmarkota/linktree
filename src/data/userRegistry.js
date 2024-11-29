@@ -1,8 +1,11 @@
-// In-memory user registry for the POC
-const userRegistry = {
-  dnshko: "Dinesh",
-  dinesh: "Dinesh", // Add both variations if needed
-};
-
-// Export to allow modification in the controller
-module.exports = userRegistry;
+// In-memory user registry with new structure
+const userRegistry = {
+  dnshko: {
+    name: "Dinesh",
+    subdomain: "dnshko-7ab3x9y"
+  },
+  // Add other users as needed
+};
+
+module.exports = userRegistry;
+

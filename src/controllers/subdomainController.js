@@ -21,13 +21,20 @@ exports.registerUser = async (req, res) => {
     }
 
     // Check if username already exists
-    const existingUser = await userRegistry.findByUsername(username);
-    if (existingUser) {
-      console.log("Username already exists:", username);
-      return res.status(409).json({
-        error: "Username already taken",
-        existingSubdomain: `https://${existingUser.subdomain}.tamilfreelancer.rest`,
-      });
+    try {
+      const existingUser = await userRegistry.findByUsername(username);
+      if (existingUser) {
+        console.log("Username already exists:", username);
+        return res.status(409).json({
+          error: "Username already taken",
+          existingSubdomain: `https://${existingUser.subdomain}.tamilfreelancer.rest`,
+        });
+      }
+    } catch (error) {
+      if (error.code !== "PGRST116") {
+        // Not found error is okay here
+        throw error;
+      }
     }
 
     // Generate random subdomain suffix
@@ -41,6 +48,7 @@ exports.registerUser = async (req, res) => {
 
     // Create user in database
     const user = await userRegistry.create(username, name, subdomain);
+    console.log("Created user:", user);
 
     const isProduction = process.env.NODE_ENV === "production";
     const domain = isProduction ? "tamilfreelancer.rest" : "mini.local:3000";
@@ -56,7 +64,11 @@ exports.registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({
+      error: "Internal server error",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
 };
 

@@ -2,9 +2,20 @@ const userRegistry = require("../data/userRegistry");
 
 module.exports = async (req, res, next) => {
   try {
-    const host = req.headers.host;
+    const host = req.headers.host.toLowerCase();
     console.log("Original host:", host);
 
+    // Check for custom domain first
+    const customDomainUser = await userRegistry.findByCustomDomain(host);
+    if (customDomainUser) {
+      console.log("Found user by custom domain:", customDomainUser);
+      req.username = customDomainUser.name;
+      req.isCustomDomain = true;
+      req.userData = customDomainUser;
+      return next();
+    }
+
+    // Then check for subdomains on main domain
     if (host.includes("tamilfreelancer.rest")) {
       const subdomain = host.split(".")[0].toLowerCase();
       console.log("Checking subdomain:", subdomain);
@@ -15,7 +26,6 @@ module.exports = async (req, res, next) => {
         return next();
       }
 
-      console.log("Searching for subdomain in database:", subdomain);
       const user = await userRegistry.findBySubdomain(subdomain);
       console.log("Database response for subdomain:", user);
 
@@ -25,6 +35,7 @@ module.exports = async (req, res, next) => {
       }
 
       req.username = user.name;
+      req.userData = user;
       console.log("Setting username:", req.username);
       next();
       return;
@@ -32,12 +43,7 @@ module.exports = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("Subdomain processing error:", error);
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-    });
+    console.error("Domain processing error:", error);
     next(error);
   }
 };

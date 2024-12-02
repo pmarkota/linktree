@@ -3,7 +3,12 @@ const crypto = require("crypto");
 
 exports.handleSubdomain = (req, res) => {
   if (req.username) {
-    res.send(`Welcome to the site for user: ${req.username}`);
+    const username = req.userData?.username || "user";
+    if (req.isCustomDomain) {
+      res.send(`Hey ${username}! This is your custom domain site.`);
+    } else {
+      res.send(`Hey ${username}! This is your subdomain site.`);
+    }
   } else {
     res.send("Welcome to the main site!");
   }
@@ -105,4 +110,109 @@ exports.getUserSubdomain = (req, res) => {
 
     subdomainId: userRegistry[username].subdomain,
   });
+};
+
+exports.addCustomDomain = async (req, res) => {
+  try {
+    const { username, customDomain } = req.body;
+    console.log("Adding custom domain:", { username, customDomain });
+
+    if (!username || !customDomain) {
+      return res.status(400).json({
+        error: "Username and custom domain are required",
+      });
+    }
+
+    // First check if user exists
+    const existingUser = await userRegistry.findByUsername(username);
+    if (!existingUser) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    // Check if domain is already in use
+    const existingDomain = await userRegistry.findByCustomDomain(customDomain);
+    if (existingDomain) {
+      return res.status(409).json({
+        error: "Domain is already in use",
+      });
+    }
+
+    console.log("Adding domain for user:", existingUser);
+    const user = await userRegistry.addCustomDomain(username, customDomain);
+    console.log("Domain added successfully:", user);
+
+    res.status(200).json({
+      message: "Custom domain added successfully",
+      verificationInstructions: {
+        token: user.domain_verification_token,
+        dnsRecord: {
+          type: "TXT",
+          name: `_verify.${customDomain}`,
+          value: user.domain_verification_token,
+        },
+        cnameRecord: {
+          type: "CNAME",
+          name: customDomain,
+          value: "cname.vercel-dns.com",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Add custom domain error:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      error: "Internal server error",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
+  }
+};
+
+exports.verifyDomain = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await userRegistry.verifyDomain(username);
+
+    res.status(200).json({
+      message: "Domain verified successfully",
+      domain: user.custom_domain,
+      status: user.domain_verification_status,
+    });
+  } catch (error) {
+    console.error("Verify domain error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+exports.getCustomDomain = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await userRegistry.findByUsername(username);
+
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      username: user.username,
+      customDomain: user.custom_domain,
+      verificationStatus: user.domain_verification_status,
+    });
+  } catch (error) {
+    console.error("Get custom domain error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
 };

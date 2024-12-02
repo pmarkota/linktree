@@ -50,6 +50,10 @@ exports.registerUser = async (req, res) => {
     const user = await userRegistry.create(username, name, subdomain);
     console.log("Created user:", user);
 
+    // Verify the user was created by fetching it back
+    const verifyUser = await userRegistry.findBySubdomain(subdomain);
+    console.log("Verification of created user:", verifyUser);
+
     const isProduction = process.env.NODE_ENV === "production";
     const domain = isProduction ? "tamilfreelancer.rest" : "mini.local:3000";
     const protocol = isProduction ? "https" : "http";

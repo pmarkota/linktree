@@ -22,16 +22,31 @@ const userRegistry = {
 
   async findBySubdomain(subdomain) {
     try {
+      console.log("Finding subdomain in database:", subdomain);
       const { data, error } = await supabase
         .from("users")
-        .select()
+        .select("*")
         .eq("subdomain", subdomain)
         .single();
 
-      if (error && error.code !== "PGRST116") {
+      console.log("Supabase response:", { data, error });
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No data found
+          console.log("No data found for subdomain:", subdomain);
+          return null;
+        }
         console.error("findBySubdomain error:", error);
         throw error;
       }
+
+      if (!data) {
+        console.log("No data returned for subdomain:", subdomain);
+        return null;
+      }
+
+      console.log("Found user data:", data);
       return data;
     } catch (error) {
       console.error("findBySubdomain catch:", error);

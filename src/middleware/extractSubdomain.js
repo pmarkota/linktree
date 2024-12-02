@@ -15,8 +15,9 @@ module.exports = async (req, res, next) => {
         return next();
       }
 
+      console.log("Searching for subdomain in database:", subdomain);
       const user = await userRegistry.findBySubdomain(subdomain);
-      console.log("Found user for subdomain:", user);
+      console.log("Database response for subdomain:", user);
 
       if (!user) {
         console.log("No user found for subdomain, redirecting to main site");
@@ -25,12 +26,18 @@ module.exports = async (req, res, next) => {
 
       req.username = user.name;
       console.log("Setting username:", req.username);
-      return next();
+      next();
+      return;
     }
 
     next();
   } catch (error) {
     console.error("Subdomain processing error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    });
     next(error);
   }
 };

@@ -6,7 +6,7 @@ module.exports = async (req, res, next) => {
     console.log("Original host:", host);
 
     if (host.includes("tamilfreelancer.rest")) {
-      const subdomain = host.split(".")[0];
+      const subdomain = host.split(".")[0].toLowerCase();
       console.log("Checking subdomain:", subdomain);
 
       if (subdomain === "www" || subdomain === "tamilfreelancer") {

@@ -23,17 +23,18 @@ const userRegistry = {
   async findBySubdomain(subdomain) {
     try {
       console.log("Finding subdomain in database:", subdomain);
+      const lowercaseSubdomain = subdomain.toLowerCase();
+
       const { data, error } = await supabase
         .from("users")
         .select("*")
-        .eq("subdomain", subdomain)
+        .ilike("subdomain", lowercaseSubdomain)
         .single();
 
       console.log("Supabase response:", { data, error });
 
       if (error) {
         if (error.code === "PGRST116") {
-          // No data found
           console.log("No data found for subdomain:", subdomain);
           return null;
         }
@@ -56,13 +57,15 @@ const userRegistry = {
 
   async create(username, name, subdomain) {
     try {
+      const lowercaseSubdomain = subdomain.toLowerCase();
+
       const { data, error } = await supabase
         .from("users")
         .insert([
           {
             username,
             name,
-            subdomain,
+            subdomain: lowercaseSubdomain,
             created_at: new Date().toISOString(),
           },
         ])

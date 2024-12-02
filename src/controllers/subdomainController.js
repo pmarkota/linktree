@@ -42,9 +42,10 @@ exports.registerUser = async (req, res) => {
       .randomBytes(7)
       .toString("base64")
       .replace(/[^a-zA-Z0-9]/g, "")
-      .substring(0, 7);
+      .substring(0, 7)
+      .toLowerCase();
 
-    const subdomain = `${username}-${randomSuffix}`;
+    const subdomain = `${username.toLowerCase()}-${randomSuffix}`;
 
     // Create user in database
     const user = await userRegistry.create(username, name, subdomain);

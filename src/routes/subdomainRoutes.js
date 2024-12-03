@@ -23,6 +23,11 @@ router.post(
   express.json(),
   subdomainController.addCustomDomain
 );
+
+// Important: Put specific routes before parameterized routes
+router.get("/api/domains/check-dns", subdomainController.checkDNSPropagation);
+
+// These routes should come after the specific routes
 router.get("/api/domains/:username", subdomainController.getCustomDomain);
 router.post("/api/domains/:username/verify", subdomainController.verifyDomain);
 

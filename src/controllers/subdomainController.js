@@ -112,6 +112,37 @@ exports.getUserSubdomain = (req, res) => {
   });
 };
 
+// Helper function for DNS instructions
+const getDNSInstructions = (domain) => ({
+  message: "Please configure the following DNS records:",
+  records: [
+    {
+      type: "A",
+      name: "@",
+      value: "76.76.21.21",
+      description: "Root domain record (points to Vercel's servers)",
+      ttl: "Auto",
+    },
+    {
+      type: "CNAME",
+      name: "www",
+      value: "cname.vercel-dns.com",
+      description: "WWW subdomain record (for www.yourdomain.com)",
+      ttl: "Auto",
+    },
+  ],
+  notes: [
+    "DNS changes can take up to 48 hours to propagate",
+    "The '@' symbol represents the root domain",
+    "After setting up DNS records, verify your domain",
+  ],
+  next_steps: {
+    verify_endpoint: `/api/domains/${domain}/verify`,
+    method: "POST",
+    description: "Call this endpoint to verify your domain setup",
+  },
+});
+
 exports.addCustomDomain = async (req, res) => {
   try {
     const { username, customDomain } = req.body;
@@ -145,19 +176,9 @@ exports.addCustomDomain = async (req, res) => {
 
     res.status(200).json({
       message: "Custom domain added successfully",
-      verificationInstructions: {
-        token: user.domain_verification_token,
-        dnsRecord: {
-          type: "TXT",
-          name: `_verify.${customDomain}`,
-          value: user.domain_verification_token,
-        },
-        cnameRecord: {
-          type: "CNAME",
-          name: customDomain,
-          value: "cname.vercel-dns.com",
-        },
-      },
+      domain: customDomain,
+      status: "pending",
+      dns_setup: getDNSInstructions(username),
     });
   } catch (error) {
     console.error("Add custom domain error:", error);
@@ -174,12 +195,33 @@ exports.addCustomDomain = async (req, res) => {
 exports.verifyDomain = async (req, res) => {
   try {
     const { username } = req.params;
-    const user = await userRegistry.verifyDomain(username);
+    const verificationResult = await userRegistry.verifyDomain(username);
+
+    if (!verificationResult.verified) {
+      return res.status(400).json({
+        error: "Domain verification failed",
+        details: verificationResult.message,
+        dns_setup: getDNSInstructions(username),
+        troubleshooting: {
+          message: "Common issues:",
+          checks: [
+            "DNS records are correctly configured",
+            "Waited for DNS propagation (can take up to 48 hours)",
+            "No typos in record values",
+            "Using correct record types (A for root, CNAME for www)",
+          ],
+        },
+      });
+    }
 
     res.status(200).json({
-      message: "Domain verified successfully",
-      domain: user.custom_domain,
-      status: user.domain_verification_status,
+      message: verificationResult.message,
+      domain: verificationResult.domain,
+      status: verificationResult.status,
+      next_steps: {
+        message: "Your domain is now verified and active",
+        note: "Your custom domain should now be working. If not, please wait a few minutes for the changes to take effect.",
+      },
     });
   } catch (error) {
     console.error("Verify domain error:", error);
@@ -202,11 +244,18 @@ exports.getCustomDomain = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    const response = {
       username: user.username,
       customDomain: user.custom_domain,
       verificationStatus: user.domain_verification_status,
-    });
+    };
+
+    // If domain is pending verification, include setup instructions
+    if (user.domain_verification_status === "pending") {
+      response.dns_setup = getDNSInstructions(username);
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Get custom domain error:", error);
     res.status(500).json({
@@ -214,5 +263,51 @@ exports.getCustomDomain = async (req, res) => {
       details:
         process.env.NODE_ENV === "development" ? error.message : undefined,
     });
+  }
+};
+
+exports.checkDNSPropagation = async (req, res) => {
+  try {
+    const { domain } = req.query;
+    const dns = require("dns").promises;
+    const results = {
+      a_record: { status: "pending", value: null },
+      cname_record: { status: "pending", value: null },
+    };
+
+    try {
+      const aRecords = await dns.resolve4(domain);
+      results.a_record = {
+        status: aRecords.includes("76.76.21.21") ? "valid" : "invalid",
+        value: aRecords,
+        expected: "76.76.21.21",
+      };
+    } catch (aError) {
+      results.a_record.error = aError.code;
+    }
+
+    try {
+      const cnameRecords = await dns.resolveCname(`www.${domain}`);
+      results.cname_record = {
+        status: cnameRecords.some((r) => r.endsWith("vercel-dns.com"))
+          ? "valid"
+          : "invalid",
+        value: cnameRecords,
+        expected: "cname.vercel-dns.com",
+      };
+    } catch (cnameError) {
+      results.cname_record.error = cnameError.code;
+    }
+
+    res.json({
+      domain,
+      propagation_status: results,
+      message:
+        "DNS records are still propagating if you see 'ENOTFOUND' errors",
+      next_check: "Try verifying again in a few minutes",
+    });
+  } catch (error) {
+    console.error("DNS propagation check error:", error);
+    res.status(500).json({ error: "Failed to check DNS propagation" });
   }
 };

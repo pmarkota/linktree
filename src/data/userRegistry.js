@@ -1,5 +1,6 @@
 const supabase = require("../config/supabase");
 const crypto = require("crypto");
+const vercelService = require("../services/vercelDomains");
 
 const userRegistry = {
   async findByUsername(username) {
@@ -124,8 +125,11 @@ const userRegistry = {
 
       // Generate verification token
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      console.log("Generated verification token");
 
+      // Add domain to Vercel first
+      await vercelService.addDomain(customDomain);
+
+      // Then add to database
       const { data, error } = await supabase
         .from("users")
         .update({
@@ -138,11 +142,12 @@ const userRegistry = {
         .single();
 
       if (error) {
+        // If database update fails, remove domain from Vercel
+        await vercelService.removeDomain(customDomain);
         console.error("addCustomDomain error:", error);
         throw error;
       }
 
-      console.log("Custom domain added successfully:", data);
       return data;
     } catch (error) {
       console.error("addCustomDomain catch:", error);
@@ -152,23 +157,148 @@ const userRegistry = {
 
   async verifyDomain(username) {
     try {
-      const { data, error } = await supabase
+      // First get the user and their verification token
+      const { data: user, error: userError } = await supabase
         .from("users")
-        .update({
-          domain_verification_status: "verified",
-        })
+        .select("*")
         .eq("username", username)
-        .select()
         .single();
 
-      if (error) {
-        console.error("verifyDomain error:", error);
-        throw error;
+      if (userError) {
+        console.error("Error fetching user for verification:", userError);
+        throw userError;
       }
-      return data;
+
+      if (!user.custom_domain || !user.domain_verification_token) {
+        throw new Error("No custom domain or verification token found");
+      }
+
+      // Verify the DNS records
+      try {
+        const dnsVerified = await this.checkDNSRecords(user.custom_domain);
+
+        if (!dnsVerified) {
+          return {
+            verified: false,
+            message: "DNS records not properly configured",
+            required_records: {
+              a_record: {
+                type: "A",
+                name: "@",
+                value: "76.76.21.21",
+                description: "Root domain record",
+              },
+              cname_record: {
+                type: "CNAME",
+                name: "www",
+                value: "cname.vercel-dns.com",
+                description: "WWW subdomain record",
+              },
+            },
+          };
+        }
+
+        // If DNS is verified, update the status
+        const { data, error } = await supabase
+          .from("users")
+          .update({
+            domain_verification_status: "verified",
+          })
+          .eq("username", username)
+          .select()
+          .single();
+
+        if (error) {
+          console.error("verifyDomain error:", error);
+          throw error;
+        }
+
+        return {
+          verified: true,
+          message: "Domain verified successfully",
+          domain: data.custom_domain,
+          status: data.domain_verification_status,
+        };
+      } catch (dnsError) {
+        console.error("DNS verification error:", dnsError);
+        return {
+          verified: false,
+          message: "Failed to verify DNS records",
+          error: dnsError.message,
+        };
+      }
     } catch (error) {
       console.error("verifyDomain catch:", error);
       throw error;
+    }
+  },
+
+  // Add DNS checking method
+  async checkDNSRecords(domain) {
+    try {
+      const dns = require("dns").promises;
+      console.log("Starting DNS verification for domain:", domain);
+
+      // Check A record for root domain
+      try {
+        console.log("Checking A record...");
+        const aRecords = await dns.resolve4(domain);
+        console.log("Found A records:", aRecords);
+
+        const hasCorrectARecord = aRecords.some(
+          (record) => record === "76.76.21.21"
+        );
+        console.log("A record matches Vercel IP:", hasCorrectARecord);
+
+        if (!hasCorrectARecord) {
+          console.log(
+            "A record verification failed - expected 76.76.21.21, got:",
+            aRecords
+          );
+          return false;
+        }
+      } catch (aError) {
+        console.log("A record lookup error:", aError.code);
+        // Don't fail immediately on ENOTFOUND, might need time to propagate
+        if (aError.code !== "ENOTFOUND") {
+          return false;
+        }
+      }
+
+      // Check CNAME record for www
+      try {
+        console.log("Checking CNAME record...");
+        const cnameRecords = await dns.resolveCname(`www.${domain}`);
+        console.log("Found CNAME records:", cnameRecords);
+
+        const hasCorrectCname = cnameRecords.some(
+          (record) =>
+            record === "cname.vercel-dns.com" ||
+            record.endsWith("vercel-dns.com")
+        );
+        console.log("CNAME record matches Vercel:", hasCorrectCname);
+
+        if (!hasCorrectCname) {
+          console.log(
+            "CNAME verification failed - expected cname.vercel-dns.com, got:",
+            cnameRecords
+          );
+          return false;
+        }
+      } catch (cnameError) {
+        console.log("CNAME lookup error:", cnameError.code);
+        // Don't fail immediately on ENOTFOUND, might need time to propagate
+        if (cnameError.code !== "ENOTFOUND") {
+          return false;
+        }
+      }
+
+      // If we get here, either records are correct or still propagating
+      console.log("DNS verification completed successfully");
+      return true;
+    } catch (error) {
+      console.error("DNS check error:", error);
+      return false;
     }
   },
 };

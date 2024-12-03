@@ -9,7 +9,7 @@ module.exports = async (req, res, next) => {
     const customDomainUser = await userRegistry.findByCustomDomain(host);
     if (customDomainUser) {
       console.log("Found user by custom domain:", customDomainUser);
-      req.username = customDomainUser.name;
+      req.username = customDomainUser.username;
       req.isCustomDomain = true;
       req.userData = customDomainUser;
       return next();

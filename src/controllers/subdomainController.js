@@ -10,7 +10,7 @@ exports.handleSubdomain = (req, res) => {
       res.send(`Hey ${username}! This is your subdomain site.`);
     }
   } else {
-    res.send("Welcome to the main site!");
+    res.send("Welcome to the main site!!!");
   }
 };
 

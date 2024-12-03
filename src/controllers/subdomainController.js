@@ -2,15 +2,17 @@ const userRegistry = require("../data/userRegistry");
 const crypto = require("crypto");
 
 exports.handleSubdomain = (req, res) => {
-  if (req.username) {
-    const username = req.userData?.username || "user";
-    if (req.isCustomDomain) {
-      res.send(`Hey ${username}! This is your custom domain site.`);
-    } else {
-      res.send(`Hey ${username}! This is your subdomain site.`);
-    }
+  // Check if user exists and is authenticated
+  if (!req.username) {
+    return res.send("Welcome to the main site!!!");
+  }
+
+  const username = req.userData?.username || "user";
+  // Explicitly check for custom domain or subdomain
+  if (req.isCustomDomain) {
+    res.send(`Hey ${username}! This is your custom domain site.`);
   } else {
-    res.send("Welcome to the main site!!!");
+    res.send(`Hey ${username}! This is your subdomain site.`);
   }
 };
 

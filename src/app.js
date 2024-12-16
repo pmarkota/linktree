@@ -6,6 +6,8 @@ const subdomainRoutes = require("./routes/subdomainRoutes");
 
 const authRoutes = require("./routes/auth");
 
+const otpRoutes = require("./routes/otpRoutes");
+
 const app = express();
 
 // Add body-parser middleware
@@ -35,6 +37,8 @@ app.use((req, res, next) => {
 });
 
 app.use("/api", authRoutes);
+
+app.use("/api", otpRoutes);
 
 app.use("/", subdomainRoutes);
 

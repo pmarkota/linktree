@@ -7,7 +7,6 @@ module.exports = async (req, res, next) => {
     console.log("Original host:", host);
     console.log("Headers:", JSON.stringify(req.headers, null, 2));
 
-    // Check for custom domain first
     console.log("Checking for custom domain...");
     const customDomainUser = await userRegistry.findByCustomDomain(host);
     console.log("Custom domain lookup result:", customDomainUser);
@@ -29,7 +28,6 @@ module.exports = async (req, res, next) => {
       return next();
     }
 
-    // Then check for subdomains on main domain
     if (host.includes("tamilfreelancer.rest")) {
       const subdomain = host.split(".")[0].toLowerCase();
       console.log("Checking subdomain:", subdomain);
